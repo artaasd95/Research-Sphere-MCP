@@ -1,2 +1,3 @@
-# GraphSage
-Graph RAG research assistant
+# Research-Sphere-MCP
+Research-Sphere-MCP
+
