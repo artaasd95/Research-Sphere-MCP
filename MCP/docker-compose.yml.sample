@@ -1,0 +1,35 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  neo4j:
+    image: neo4j:5.6
+    container_name: ai_pipeline_neo4j
+    ports:
+      - "7474:7474"   # HTTP UI
+      - "7687:7687"   # Bolt
+    environment:
+      NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password}"
+    volumes:
+      - neo4j_data:/data
+
+  app:
+    build: .
+    container_name: ai_pipeline_app
+    depends_on:
+      - neo4j
+    environment:
+      # load from .env if present, or override here
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      NEO4J_URI: "neo4j://neo4j:7687"
+      NEO4J_USER: "${NEO4J_USER:-neo4j}"
+      NEO4J_PASSWORD: "${NEO4J_PASSWORD:-password}"
+    volumes:
+      - .:/app:ro
+      - vector_store:/app/vector_store
+      - ./data/pdfs:/app/data/pdfs:ro
+    command: ["python", "main.py"]
+
+volumes:
+  neo4j_data:
+  vector_store:
