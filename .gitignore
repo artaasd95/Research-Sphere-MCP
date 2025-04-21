@@ -210,3 +210,5 @@ api_keys.py
 *.bin
 /tmp_trainer/
 .pyc
+
+whole.md
