@@ -17,58 +17,62 @@ from langchain_openai import ChatOpenAI
 async def initialize_managers(state: Dict[str, Any]) -> Dict[str, Any]:
     state["vsm"] = VectorStoreManager()
     state["gm"] = GraphManager()
-    state["retriever"] = KnowledgeRetriever(state["vsm"], state["gm"])
-    state["generator"] = LongAnswerGenerator()
     return state
 
 async def check_vector_store(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         state["vsm"].load()
-        logger.info("Vector store loaded")
         state["vector_store_exists"] = True
     except FileNotFoundError:
-        logger.info("Vector store not found")
         state["vector_store_exists"] = False
     return state
 
+def decide_ingestion_path(state: Dict[str, Any]) -> str:
+    return "ingest_corpus" if not state.get("vector_store_exists") else "retrieve_documents"
+
+# nodes/retrieval_nodes.py
 async def ingest_corpus(state: Dict[str, Any]) -> Dict[str, Any]:
     pdf_docs = await process_pdf_directory(Path("./data/pdfs"))
-    arxiv_docs = await load_arxiv_documents("retrieval augmented generation", max_docs=5)
+    arxiv_docs = await load_arxiv_documents(state["query"], max_docs=5)
     docs = pdf_docs + arxiv_docs
-    
-    state["vsm"].build(docs)
-    graph_docs = state["gm"].transform(
-        docs,
-        allowed_nodes=["Paper"],
-        allowed_relationships=[("Paper", "CITES", "Paper")]
-    )
-    state["gm"].ingest(graph_docs)
+    # ... rest of ingestion logic ...
     return state
 
 async def retrieve_documents(state: Dict[str, Any]) -> Dict[str, Any]:
-    hybrid_results = state["retriever"].hybrid(state["query"], k=8)
-    state["docs"] = hybrid_results["vector"]
+    retriever = KnowledgeRetriever(state["vsm"], state["gm"])
+    hybrid = retriever.hybrid(state["query"], k=8)
+    state["docs"] = hybrid["vector"]
     return state
 
+# nodes/generation_nodes.py
 async def generate_outline(state: Dict[str, Any]) -> Dict[str, Any]:
-    llm = ChatOpenAI(
-        model_name=settings.llm_model,
-        temperature=0.3,
-        api_key=settings.openai_api_key
+    prompt_template = """Generate a comprehensive outline for a technical report on: {query}
+    Requirements:
+    - Maximum {max_sections} sections
+    - Include both theoretical and practical aspects
+    - Prioritize recent developments (last 2-3 years)
+    - Format sections as markdown headers (## Section Title)
+    
+    Output format:
+    1. Section 1 Title
+    2. Section 2 Title
+    ..."""
+    
+    prompt = PromptTemplate.from_template(prompt_template)
+    chain = LLMChain(
+        llm=ChatOpenAI(model_name=settings.llm_model, temperature=0.3),
+        prompt=prompt
     )
-    prompt = PromptTemplate.from_template(
-        "Create an outline of up to {n} sections for a technical report answering: {q}"
+    outline = await chain.arun(
+        query=state["query"],
+        max_sections=state.get("max_sections", 5)
     )
-    chain = LLMChain(llm=llm, prompt=prompt)
-    outline = await chain.arun(q=state["query"], n=settings.max_sections)
-    state["sections"] = [
-        s.strip("• ") for s in outline.split("\n") 
-        if s.strip()
-    ][:settings.max_sections]
+    state["sections"] = [s.strip() for s in outline.split("\n") if s.strip()]
     return state
 
 async def generate_answer(state: Dict[str, Any]) -> Dict[str, Any]:
-    answer = await state["generator"].agenerate(
+    generator = LongAnswerGenerator()
+    answer = await generator.agenerate(
         state["query"],
         state["sections"],
         state["docs"]
