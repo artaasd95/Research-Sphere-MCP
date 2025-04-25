@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi[uvicorn]>=0.115.12",
     "langchain>=0.3.24",
     "langchain-community>=0.3.22",
     "langchain-deepseek>=0.1.3",
