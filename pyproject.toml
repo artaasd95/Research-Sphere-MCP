@@ -1,0 +1,11 @@
+[project]
+name = "research-sphere-mcp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain>=0.3.24",
+    "langchain-community>=0.3.22",
+    "mcp[cli]>=1.6.0",
+]
