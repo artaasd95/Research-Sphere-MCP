@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from ..graph.graph_builder import build_rag_graph
 from ..common.logger import logger
+from ..common.config import settings
 import uvicorn
 
 class RAGRequest(BaseModel):
