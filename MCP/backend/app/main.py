@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 from .api.endpoints import rag
 from .core.config import settings
+from .core.auth import APIKeyMiddleware
 
 # Configure logging
 logger.remove()
@@ -48,7 +49,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware
+# Add middleware
+app.add_middleware(APIKeyMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # In production, replace with specific origins
